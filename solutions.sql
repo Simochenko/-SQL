@@ -3490,6 +3490,187 @@ from book as b
 group by b.genre_id) sub_query_1
 using (name_genre);
 
+/*Создаем схему*/
+DROP SCHEMA IF EXISTS stepik CASCADE;
+CREATE SCHEMA IF NOT EXISTS stepik;
+
+---AUTHOR
+DROP TABLE IF EXISTS stepik.author CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.author
+(
+		author_id   BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		name_author TEXT
+);
+INSERT INTO stepik.author(name_author)
+VALUES ('Булгаков М.А.'),
+       ('Достоевский Ф.М.'),
+       ('Есенин С.А.'),
+       ('Пастернак Б.Л.'),
+       ('Лермонтов М.Ю.');
+
+
+---GENRE
+DROP TABLE IF EXISTS stepik.genre CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.genre
+(
+		genre_id   BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		name_genre TEXT
+);
+INSERT INTO stepik.genre(name_genre)
+VALUES ('Роман'),
+       ('Поэзия'),
+       ('Приключения');
+
+
+---BOOK
+DROP TABLE IF EXISTS stepik.book CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.book
+(
+		book_id   BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		title     TEXT,
+		author_id BIGINT NOT NULL,
+		genre_id  BIGINT,
+		price     DECIMAL(8, 2),
+		amount    INT,
+		CONSTRAINT "FK_book_author"
+				FOREIGN KEY (author_id) REFERENCES stepik.author (author_id) ON DELETE CASCADE,
+		CONSTRAINT "FK_book_genre"
+				FOREIGN KEY (genre_id) REFERENCES stepik.genre (genre_id) ON DELETE SET NULL
+);
+INSERT INTO stepik.book(title, author_id, genre_id, price, amount)
+VALUES ('Мастер и Маргарита', 1, 1, 670.99, 3),
+       ('Белая гвардия', 1, 1, 540.50, 5),
+       ('Идиот', 2, 1, 460.00, 10),
+       ('Братья Карамазовы', 2, 1, 799.01, 2),
+       ('Игрок', 2, 1, 480.50, 10),
+       ('Стихотворения и поэмы', 3, 2, 650.00, 15),
+       ('Черный человек', 3, 2, 570.20, 6),
+       ('Лирика', 4, 2, 518.99, 2);
+
+
+---CITY
+DROP TABLE IF EXISTS stepik.city CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.city
+(
+		city_id       BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		name_city     TEXT,
+		days_delivery INT
+);
+INSERT INTO stepik.city(name_city, days_delivery)
+VALUES ('Москва', 5),
+       ('Санкт-Петербург', 3),
+       ('Владивосток', 12);
+
+
+---CLIENT
+CREATE EXTENSION IF NOT EXISTS citext;
+DROP DOMAIN IF EXISTS email;
+CREATE DOMAIN email AS citext
+		CHECK ( value ~
+		        '^[a-zA-Z0-9.!#$%&''*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$' );
+
+DROP TABLE IF EXISTS stepik.client CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.client
+(
+		client_id   BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		name_client TEXT,
+		city_id     BIGINT,
+		email       email,
+		CONSTRAINT "FK_client_city"
+				FOREIGN KEY (city_id) REFERENCES stepik.city (city_id)
+);
+INSERT INTO stepik.client(name_client, city_id, email)
+VALUES ('Баранов Павел', 3, 'baranov@test'),
+       ('Абрамова Катя', 1, 'abramova@test'),
+       ('Семенонов Иван', 2, 'semenov@test'),
+       ('Яковлева Галина', 1, 'yakovleva@test');
+
+
+---BUY
+DROP TABLE IF EXISTS stepik.buy CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.buy
+(
+		buy_id          BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		buy_description TEXT,
+		client_id       BIGINT DEFAULT (NULL),
+		CONSTRAINT "FK_buy_client"
+				FOREIGN KEY (client_id) REFERENCES stepik.client (client_id)
+);
+INSERT INTO stepik.buy (buy_description, client_id)
+VALUES ('Доставка только вечером', 1),
+       (NULL, 3),
+       ('Упаковать каждую книгу по отдельности', 2),
+       (NULL, 1);
+
+
+---BUY_BOOK
+DROP TABLE IF EXISTS stepik.buy_book CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.buy_book
+(
+		buy_book_id BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		buy_id      BIGINT,
+		book_id     BIGINT,
+		amount      INT,
+		CONSTRAINT "FK_buy_book_buy"
+				FOREIGN KEY (buy_id) REFERENCES stepik.buy (buy_id),
+		CONSTRAINT "FK_buy_book_book"
+				FOREIGN KEY (book_id) REFERENCES stepik.book (book_id)
+);
+INSERT INTO stepik.buy_book(buy_id, book_id, amount)
+VALUES (1, 1, 1),
+       (1, 7, 2),
+       (2, 8, 2),
+       (3, 3, 2),
+       (3, 2, 1),
+       (3, 1, 1),
+       (4, 5, 1);
+
+
+---STEP
+DROP TABLE IF EXISTS stepik.step CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.step
+(
+		step_id   BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		name_step TEXT
+);
+INSERT INTO stepik.step(name_step)
+VALUES ('Оплата'),
+       ('Упаковка'),
+       ('Транспортировка'),
+       ('Доставка');
+
+
+---BUY_STEP
+DROP TABLE IF EXISTS stepik.buy_step CASCADE;
+CREATE TABLE IF NOT EXISTS stepik.buy_step
+(
+		buy_step_id   BIGINT PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+		buy_id        INT,
+		step_id       INT,
+		date_step_beg DATE,
+		date_step_end DATE,
+		CONSTRAINT "FK_buy_step_buy"
+				FOREIGN KEY (buy_id) REFERENCES stepik.buy (buy_id),
+		CONSTRAINT "FK_buy_step_step"
+				FOREIGN KEY (step_id) REFERENCES stepik.step (step_id)
+);
+INSERT INTO stepik.buy_step(buy_id, step_id, date_step_beg, date_step_end)
+VALUES (1, 1, '2020-02-20', '2020-02-20'),
+       (1, 2, '2020-02-20', '2020-02-21'),
+       (1, 3, '2020-02-22', '2020-03-07'),
+       (1, 4, '2020-03-08', '2020-03-08'),
+       (2, 1, '2020-02-28', '2020-02-28'),
+       (2, 2, '2020-02-29', '2020-03-01'),
+       (2, 3, '2020-03-02', NULL),
+       (2, 4, NULL, NULL),
+       (3, 1, '2020-03-05', '2020-03-05'),
+       (3, 2, '2020-03-05', '2020-03-06'),
+       (3, 3, '2020-03-06', '2020-03-10'),
+       (3, 4, '2020-03-11', NULL),
+       (4, 1, '2020-03-20', NULL),
+       (4, 2, NULL, NULL),
+       (4, 3, NULL, NULL),
+       (4, 4, NULL, NULL);
 
 Содержание урока
 С помощью запросов корректировки данных решим задачу о занесении в базу книг, привезенных на склад поставщиком.
@@ -3895,6 +4076,8 @@ WHERE genre.name_genre LIKE 'Поэзия';
 SELECT * FROM author;
 
 SELECT * FROM book;
+
+
 
 
 
@@ -5547,3 +5730,97 @@ order by name_program
 3.3.6
 select name_program, plan from program
 where plan=(select max(plan) from program)
+
+
+Посчитать, сколько дополнительных баллов получит каждый абитуриент. Информацию вывести в отсортированном по фамилиям виде.
+
+Фрагмент логической схемы базы данных:
+
+
+
+Пояснение
+Текст задания (чтобы не прокручивать страницу) :
+
+Посчитать, сколько дополнительных баллов получит каждый абитуриент. Информацию вывести в отсортированном по фамилиям виде.
+
+Результат
++-----------------+-------+
+| name_enrollee   | Бонус |
++-----------------+-------+
+| Абрамова Катя   | 0     |
+| Баранов Павел   | 6     |
+| Попов Илья      | 8     |
+| Семенов Иван    | 5     |
+| Степанова Дарья | 0     |
+| Яковлева Галина | 1     |
++-----------------+-------+
+
+3.3.7
+select name_enrollee, ifnull(sum(a.bonus), 0) as Бонус from enrollee e
+left join enrollee_achievement ev on e.enrollee_id=ev.enrollee_id
+left join achievement a on a.achievement_id=ev.achievement_id
+group by name_enrollee
+order by name_enrollee
+
+
+Задание
+Выведите сколько человек подало заявление на каждую образовательную программу и конкурс на нее (число поданных заявлений деленное на количество мест по плану), округленный до 2-х знаков после запятой. В запросе вывести название факультета, к которому относится образовательная программа, название образовательной программы, план набора абитуриентов на образовательную программу (plan), количество поданных заявлений (Количество) и Конкурс. Информацию отсортировать в порядке убывания конкурса.
+
+Фрагмент логической схемы базы данных:
+
+
+
+Пояснение
+Текст задания (чтобы не прокручивать страницу) :
+
+Выведите сколько человек подало заявление на каждую образовательную программу и конкурс на нее (число поданных заявлений деленное на количество мест по плану), округленный до 2-х знаков после запятой. В запросе вывести название факультета, к которому относится образовательная программа, название образовательной программы, план набора абитуриентов на образовательную программу (plan), количество поданных заявлений (Количество) и Конкурс. Информацию отсортировать в порядке убывания конкурса.
+
+Результат
++-------------------------+-------------------------------------+------+------------+---------+
+| name_department         | name_program                        | plan | Количество | Конкурс |
++-------------------------+-------------------------------------+------+------------+---------+
+| Школа естественных наук | Математика и компьютерные науки     | 1    | 3          | 3.00    |
+| Инженерная школа        | Прикладная механика                 | 2    | 4          | 2.00    |
+| Школа естественных наук | Прикладная математика и информатика | 2    | 3          | 1.50    |
+| Инженерная школа        | Мехатроника и робототехника         | 3    | 4          | 1.33    |
++-------------------------+-------------------------------------+------+------------+---------+
+
+3.3.8
+select   name_department, p.name_program, plan, count(*) as Количество, round(count(*)/plan, 2) as Конкурс
+from program_enrollee pe
+join program p using(program_id)
+join department d using(department_id)
+group by name_department, p.name_program, plan
+order by plan, name_program desc;
+
+
+Задание
+Вывести образовательные программы, на которые для поступления необходимы предмет «Информатика» и «Математика» в отсортированном по названию программ виде.
+
+Логическая схемы базы данных (чтобы потренироваться выбирать таблицы для запроса):
+
+
+
+Пояснение
+Текст задания (чтобы не прокручивать страницу) :
+
+Вывести образовательные программы, на которые для поступления необходимы предмет «Информатика» и «Математика» в отсортированном по названию программ виде.
+
+Результат
++-------------------------------------+
+| name_program                        |
++-------------------------------------+
+| Математика и компьютерные науки     |
+| Прикладная математика и информатика |
++-------------------------------------+
+
+
+3.3.9
+select p.name_program from subject s
+join program_subject ps on s.subject_id=ps.subject_id
+join program p on p.program_id=ps.program_id
+where name_subject in ('Математика', 'Информатика')
+group by name_program
+having count(*)=2
+order by name_program
+
