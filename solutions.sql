@@ -5868,7 +5868,7 @@ UNION all
 select book.title, buy_archive.amount, buy_archive.price
 from book
 JOIN buy_archive USING(book_id)
-/*group by title, price*/) as zo
+) as zo
 group by title
 order by Сумма desc;
 /*1. Создать запрос для текущего года. Отобрать книгу, количество проданных книг и их стоимость. Для этого использовать таблицы book, buy_book, buy, buy_step. Указать условие, что для этих книг дата окончания этапа Оплата не пусто.  Этот запрос отладить.
